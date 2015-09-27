@@ -56,8 +56,8 @@ function msd3()
         
 
     % Parameters
-    row = 5;
-    col = 5;
+    row = 20;
+    col = 20;
     stiffness = 10;           % N/m
     damping =   1;            % Ns/m
     mass = 0.01;              % Kg
@@ -74,7 +74,8 @@ function msd3()
     cs = 1;
            
     % This is the main iterations
-    for i = 0 : 10000
+    tic
+    for i = 0 : 1000
         % Do update
         nodes = updateNode(nodes, mass, stiffness, damping, ts);
         
@@ -95,6 +96,7 @@ function msd3()
             guidata(S.f, S);
         end
     end
+    toc
         
 end
 
@@ -127,14 +129,19 @@ end
 
 %% 
 function nodes = updateNode(nodes, mass, stiffness, damping, ts)
-% Update all nodes per time sampling
+    % Update all nodes per time sampling
     row = nodes.row;
     col = nodes.col;
     node = nodes.node;
     
     % Force update
     % Calculate force on each node
-    ts2 = ts^2;
+    ts_p2 = ts^2;
+    ts2 = ts * 2;
+    k = stiffness * ones(1, 8);    
+    
+    f_g = mass * [0 -9.81];
+                 
     for r = 1 : row
         nextRow = r + 1;
         prevRow = r - 1;
@@ -143,21 +150,15 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
             nextCol = c + 1;
             prevCol = c - 1;
             
-            f1 = [0 0];
-            f2 = [0 0];
-            f3 = [0 0];
-            f4 = [0 0];
-            f5 = [0 0];
-            f6 = [0 0];
-            f7 = [0 0];
-            f8 = [0 0];
-
+            x = zeros(8, 2);
+                                              
             % Link 1
             if (r < row && c > 1)
                 l0 = node(r, c).initalPos - node(nextRow, prevCol).initalPos;
                 lt = node(r, c).pos - node(nextRow, prevCol).pos;
                 n = norm(lt, 2);                
-                f1 = stiffness * (norm(l0, 2) - n) * lt / n;
+                %f1 = stiffness * (norm(l0, 2) - n) * lt / n;
+                x(1, :) = (norm(l0, 2) - n) * lt / n;            
             end
 
             % Link 2
@@ -165,7 +166,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(nextRow, c).initalPos;
                 lt = node(r, c).pos - node(nextRow, c).pos;
                 n = norm(lt, 2);
-                f2 = stiffness * (norm(l0, 2) - n) * lt / n;
+                x(2, :) = (norm(l0, 2) - n) * lt / n;            
             end
 
             % Link 3
@@ -173,7 +174,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(r, nextCol).initalPos;
                 lt = node(r, c).pos - node(r, nextCol).pos;
                 n = norm(lt, 2);
-                f3 = stiffness * (norm(l0, 2) - n) * lt / n;
+                x(3, :) = (norm(l0, 2) - n) * lt / n;            
             end
 
             % Link 4
@@ -181,7 +182,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, nextCol).initalPos;
                 lt = node(r, c).pos - node(prevRow, nextCol).pos;
                 n = norm(lt, 2);
-                f4 = stiffness * (norm(l0, 2) - n) * lt / n;
+                x(4, :) = (norm(l0, 2) - n) * lt / n;
             end
 
             % Link 5
@@ -189,7 +190,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, c).initalPos;
                 lt = node(r, c).pos - node(prevRow, c).pos;
                 n = norm(lt, 2);
-                f5 = stiffness * (norm(l0, 2) - n) * lt / n;    
+                x(5, :) = (norm(l0, 2) - n) * lt / n;    
             end
 
             % Link 6
@@ -197,7 +198,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(r, prevCol).initalPos;                        
                 lt = node(r, c).pos - node(r, prevCol).pos; 
                 n = norm(lt, 2);
-                f6 = stiffness * (norm(l0, 2) - n) * lt / n;                     
+                x(6, :) = (norm(l0, 2) - n) * lt / n;                     
             end
             
             % Link 7
@@ -205,7 +206,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(nextRow, nextCol).initalPos;                        
                 lt = node(r, c).pos - node(nextRow, nextCol).pos; 
                 n = norm(lt, 2);
-                f7 = stiffness * (norm(l0, 2) - n) * lt / n;                     
+                x(7, :) = (norm(l0, 2) - n) * lt / n;                     
             end
             
             % Link 8
@@ -213,27 +214,26 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, prevCol).initalPos;                        
                 lt = node(r, c).pos - node(prevRow, prevCol).pos; 
                 n = norm(lt, 2);
-                f8 = stiffness * (norm(l0, 2) - n) * lt / n;                     
+                x(8, :) = (norm(l0, 2) - n) * lt / n;                     
             end
-
-            node(r,c).force =  f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8 - ... 
-                               damping * node(r,c).vel + mass * [0 -9.81] ...
+            
+            node(r,c).force =  k * x - ... 
+                               damping * node(r,c).vel + f_g ...
                                + node(r,c).force_ext;
-
         end
-    end
-
+    end   
+       
     % Position, velocity, and acceelleration update    
     for r = 1 : row        
         for c = 1: col
             if  node(r,c).isFixed ~= 1            
                 node(r,c).acc = node(r,c).force ./ mass;
            
-                p_new = 2 * node(r,c).pos - node(r,c).pos_old + ts2 * node(r,c).acc;
+                p_new = 2 * node(r,c).pos - node(r,c).pos_old + ts_p2 * node(r,c).acc;
                 node(r,c).pos_old = node(r,c).pos;
                 node(r,c).pos = p_new;
     
-                node(r,c).vel = 1 / (2*ts) * (node(r,c).pos - node(r,c).pos_old);
+                node(r,c).vel = 1 / (ts2) * (node(r,c).pos - node(r,c).pos_old);
             end               
         end
     end

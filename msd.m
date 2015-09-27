@@ -39,8 +39,8 @@ function msd()
     ylabel('meter');
 
     % Parameters
-    row = 5;
-    col = 5;
+    row = 10;
+    col = 10;
     stiffness = -10;    % N/m
     damping =  -1;      % Ns/m
     mass = 0.01;        % Kg
