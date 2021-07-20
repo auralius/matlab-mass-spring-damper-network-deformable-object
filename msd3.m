@@ -32,6 +32,9 @@ function msd3()
     clc;
     clear all;
     
+    % How long do we run the simulation?
+    n_iter = 4000;
+    
     % For plotting purpose, we will aslo display the current simulation
     % time
     S.f = figure;
@@ -54,7 +57,6 @@ function msd3()
     set(S.h,'ButtonDownFcn',@(varargin)startDragFcn(varargin, S))
     set(S.f, 'WindowButtonUpFcn', @(varargin)stopDragFcn(varargin, S));
         
-
     % Parameters
     row = 20;
     col = 20;
@@ -66,7 +68,7 @@ function msd3()
     
     % Build the nodes and the canvas
     nodes = buildNodes(row, col);
-    canvas = createCanvas(nodes);
+    canvas = createCanvas(nodes,[-0.1 0.3], [-1.1 0.1]);
     canvas = drawNodes(S, canvas, nodes, 0);
     
     % Selected node by mouse
@@ -75,11 +77,13 @@ function msd3()
            
     % This is the main iterations
     tic
-    for i = 0 : 1000
+    for i = 0 : n_iter
         % Do update
         nodes = updateNode(nodes, mass, stiffness, damping, ts);
         
-        if mod(i, 10) == 0
+        % Update tha canvas every 10th-iteration, otherwise it's going to
+        %   be very slow
+        if mod(i, 10) == 0  
             canvas = drawNodes(S, canvas, nodes, ts*i);
             
             S = guidata(S.f);  
@@ -158,7 +162,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 lt = node(r, c).pos - node(nextRow, prevCol).pos;
                 n = norm(lt, 2);                
                 %f1 = stiffness * (norm(l0, 2) - n) * lt / n;
-                x(1, :) = (norm(l0, 2) - n) * lt / n;            
+                x(1, :) = (n - norm(l0, 2)) * lt / n;            
             end
 
             % Link 2
@@ -166,7 +170,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(nextRow, c).initalPos;
                 lt = node(r, c).pos - node(nextRow, c).pos;
                 n = norm(lt, 2);
-                x(2, :) = (norm(l0, 2) - n) * lt / n;            
+                x(2, :) = (n - norm(l0, 2)) * lt / n;            
             end
 
             % Link 3
@@ -174,7 +178,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(r, nextCol).initalPos;
                 lt = node(r, c).pos - node(r, nextCol).pos;
                 n = norm(lt, 2);
-                x(3, :) = (norm(l0, 2) - n) * lt / n;            
+                x(3, :) = (n - norm(l0, 2)) * lt / n;            
             end
 
             % Link 4
@@ -182,7 +186,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, nextCol).initalPos;
                 lt = node(r, c).pos - node(prevRow, nextCol).pos;
                 n = norm(lt, 2);
-                x(4, :) = (norm(l0, 2) - n) * lt / n;
+                x(4, :) = (n - norm(l0, 2)) * lt / n;
             end
 
             % Link 5
@@ -190,7 +194,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, c).initalPos;
                 lt = node(r, c).pos - node(prevRow, c).pos;
                 n = norm(lt, 2);
-                x(5, :) = (norm(l0, 2) - n) * lt / n;    
+                x(5, :) = (n - norm(l0, 2)) * lt / n;    
             end
 
             % Link 6
@@ -198,7 +202,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(r, prevCol).initalPos;                        
                 lt = node(r, c).pos - node(r, prevCol).pos; 
                 n = norm(lt, 2);
-                x(6, :) = (norm(l0, 2) - n) * lt / n;                     
+                x(6, :) = (n - norm(l0, 2)) * lt / n;                     
             end
             
             % Link 7
@@ -206,7 +210,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(nextRow, nextCol).initalPos;                        
                 lt = node(r, c).pos - node(nextRow, nextCol).pos; 
                 n = norm(lt, 2);
-                x(7, :) = (norm(l0, 2) - n) * lt / n;                     
+                x(7, :) = (n - norm(l0, 2)) * lt / n;                     
             end
             
             % Link 8
@@ -214,10 +218,12 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, prevCol).initalPos;                        
                 lt = node(r, c).pos - node(prevRow, prevCol).pos; 
                 n = norm(lt, 2);
-                x(8, :) = (norm(l0, 2) - n) * lt / n;                     
+                x(8, :) = (n - norm(l0, 2)) * lt / n;                     
             end
             
-            node(r,c).force =  k * x - ... 
+            % M XDDOT + B XDOT  + KX = Fext
+            % XDDOT = -KX - B XDOT + Fext 
+            node(r,c).force =  -k * x - ... 
                                damping * node(r,c).vel + f_g ...
                                + node(r,c).force_ext;
         end
@@ -242,8 +248,10 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
 end
 
 %%
-function canvas = createCanvas(nodes)
-    % Graphic thingy     
+function canvas = createCanvas(nodes, xrange, yrange)
+    % Graphic thingy   
+    % It's difficult to draw data point from a structure, so we are going
+    %   to extract them out and put them into an array.
     index = 1;
     for c = 1 : nodes.col
         for r = 1 : nodes.row
@@ -252,12 +260,8 @@ function canvas = createCanvas(nodes)
         end
     end
 
-    canvas_min = min(canvas);
-    canvas_max = max(canvas);
-    range = canvas_max - canvas_min;
-
-    xlim([canvas_min(1)-range(1) canvas_max(1)+range(1)])
-    ylim([canvas_min(2)-range(2)*3 canvas_max(2)+range(2)])
+    xlim([xrange(1) xrange(2)]);
+    ylim([yrange(1) yrange(2)]);
 end
 
 %% 

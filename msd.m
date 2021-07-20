@@ -30,6 +30,9 @@ function msd()
     clc;
     clear all;
     
+    % How long do we run the simulation?
+    n_iter = 10000;
+    
     % For plotting purpose, we will aslo display the current simulation
     % time
     S.h = plot(0, 0);
@@ -41,8 +44,8 @@ function msd()
     % Parameters
     row = 10;
     col = 10;
-    stiffness = -10;    % N/m
-    damping =  -1;      % Ns/m
+    stiffness = 10;    % N/m
+    damping =  1;      % Ns/m
     mass = 0.01;        % Kg
     ts = 0.005;         % Seconds
     
@@ -52,7 +55,7 @@ function msd()
     canvas = drawNodes(S, canvas, nodes, 0);
     
     % This is the main iterations
-    for i = 0 : 10000
+    for i = 0 : n_iter
         nodes = updateNode(nodes, mass, stiffness, damping, ts);
         if mod(i, 10) == 0
             canvas = drawNodes(S, canvas, nodes, ts*i);
@@ -175,8 +178,10 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 n = norm(lt, 2);
                 f8 = stiffness * (n - norm(l0, 2)) * lt / n;                     
             end
-
-            node(r,c).force =  f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8 + ... 
+            
+            % M XDDOT + B XDOT  + KX = Fext
+            % XDDOT = -KX - B XDOT + Fext
+            node(r,c).force =  -f1 - f2 - f3 - f4 - f5 - f6 - f7 - f8 - ... 
                                damping * node(r,c).vel + mass * [0 -9.81];
 
         end

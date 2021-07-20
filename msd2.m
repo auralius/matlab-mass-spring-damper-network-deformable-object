@@ -29,7 +29,10 @@ function msd2()
     % Warning! This clears everything!
 	close all;
     clc;
-    clear all;
+    clear;
+    
+    % How long do we run the simulation?
+    n_iter = 10000;
     
     % For plotting purpose, we will aslo display the current simulation
     % time
@@ -53,7 +56,6 @@ function msd2()
     set(S.h,'ButtonDownFcn',@(varargin)startDragFcn(varargin, S))
     set(S.f, 'WindowButtonUpFcn', @(varargin)stopDragFcn(varargin, S));
         
-
     % Parameters
     row = 5;
     col = 5;
@@ -73,7 +75,7 @@ function msd2()
     cs = 1;
            
     % This is the main iterations
-    for i = 0 : 10000
+    for i = 0 : n_iter
         % Do update
         nodes = updateNode(nodes, mass, stiffness, damping, ts);
         
@@ -154,7 +156,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(nextRow, prevCol).initalPos;
                 lt = node(r, c).pos - node(nextRow, prevCol).pos;
                 n = norm(lt, 2);                
-                f1 = stiffness * (norm(l0, 2) - n) * lt / n;
+                f1 = stiffness * (n - norm(l0, 2)) * lt / n;
             end
 
             % Link 2
@@ -162,7 +164,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(nextRow, c).initalPos;
                 lt = node(r, c).pos - node(nextRow, c).pos;
                 n = norm(lt, 2);
-                f2 = stiffness * (norm(l0, 2) - n) * lt / n;
+                f2 = stiffness * (n - norm(l0, 2)) * lt / n;
             end
 
             % Link 3
@@ -170,7 +172,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(r, nextCol).initalPos;
                 lt = node(r, c).pos - node(r, nextCol).pos;
                 n = norm(lt, 2);
-                f3 = stiffness * (norm(l0, 2) - n) * lt / n;
+                f3 = stiffness * (n - norm(l0, 2)) * lt / n;
             end
 
             % Link 4
@@ -178,7 +180,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, nextCol).initalPos;
                 lt = node(r, c).pos - node(prevRow, nextCol).pos;
                 n = norm(lt, 2);
-                f4 = stiffness * (norm(l0, 2) - n) * lt / n;
+                f4 = stiffness * (n - norm(l0, 2)) * lt / n;
             end
 
             % Link 5
@@ -186,7 +188,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, c).initalPos;
                 lt = node(r, c).pos - node(prevRow, c).pos;
                 n = norm(lt, 2);
-                f5 = stiffness * (norm(l0, 2) - n) * lt / n;    
+                f5 = stiffness * (n - norm(l0, 2)) * lt / n;    
             end
 
             % Link 6
@@ -194,7 +196,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(r, prevCol).initalPos;                        
                 lt = node(r, c).pos - node(r, prevCol).pos; 
                 n = norm(lt, 2);
-                f6 = stiffness * (norm(l0, 2) - n) * lt / n;                     
+                f6 = stiffness * (n - norm(l0, 2)) * lt / n;                     
             end
             
             % Link 7
@@ -202,7 +204,7 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(nextRow, nextCol).initalPos;                        
                 lt = node(r, c).pos - node(nextRow, nextCol).pos; 
                 n = norm(lt, 2);
-                f7 = stiffness * (norm(l0, 2) - n) * lt / n;                     
+                f7 = stiffness * (n - norm(l0, 2)) * lt / n;                     
             end
             
             % Link 8
@@ -210,13 +212,14 @@ function nodes = updateNode(nodes, mass, stiffness, damping, ts)
                 l0 = node(r, c).initalPos - node(prevRow, prevCol).initalPos;                        
                 lt = node(r, c).pos - node(prevRow, prevCol).pos; 
                 n = norm(lt, 2);
-                f8 = stiffness * (norm(l0, 2) - n) * lt / n;                     
+                f8 = stiffness * (n - norm(l0, 2)) * lt / n;                     
             end
 
-            node(r,c).force =  f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8 - ... 
-                               damping * node(r,c).vel + mass * [0 -9.81] ...
-                               + node(r,c).force_ext;
-
+            % M XDDOT + B XDOT  + KX = Fext
+            % XDDOT = -KX - B XDOT + Fext
+            
+            node(r,c).force =  -f1 - f2 - f3 - f4 - f5 - f6 - f7 - f8 - ... 
+                               damping * node(r,c).vel + mass * [0 -9.81];            
         end
     end
 
